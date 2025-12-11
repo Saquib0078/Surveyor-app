@@ -136,7 +136,7 @@ class DetailPage extends StatelessWidget {
                 shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0))),
               ),
               onPressed: () {
-                Get.to(() => SelfInspection(data: selectedEntries)); // Pass the data here
+                // Get.to(() => SelfInspection()); // Pass the data here
               },
               child: Text('Continue to take Car Images', style: TextStyle(color: Colors.blue[900])),
             ),

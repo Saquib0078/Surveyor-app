@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "671277342571",
+    "project_id": "fir-ffb17",
+    "storage_bucket": "fir-ffb17.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:671277342571:android:5bbbce36e1d8669905362e",
+        "android_client_info": {
+          "package_name": "com.example.cardamage.car_damage"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAp6Q3NRxHgiByEpPeOM66rBsz7E9nj0Gg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

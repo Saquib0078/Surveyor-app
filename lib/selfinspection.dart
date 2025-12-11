@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,8 +12,11 @@ import 'package:path/path.dart';
 import 'helpers/getCurrentPosition.dart';
 
 class SelfInspection extends StatefulWidget {
-  final Map<String, dynamic> data; // Receive the data
-  SelfInspection({required this.data});
+  // final Map<String, dynamic> data; // Receive the data
+  // SelfInspection({required this.data});
+  final Function(List<String>) onImagesUpdated;
+  SelfInspection({Key? key, required this.onImagesUpdated}) : super(key: key);
+
   @override
   State<SelfInspection> createState() => _SelfInspectionState();
 }
@@ -23,7 +27,8 @@ class _SelfInspectionState extends State<SelfInspection> {
   void initState() {
     super.initState();
     // Print the received data
-    print("Received data: ${widget.data}");}
+    // print("Received data: ${widget.data}");
+    }
   // Image data
   String frontSide = "";
   String frontRightHandSide = "";
@@ -101,31 +106,31 @@ class _SelfInspectionState extends State<SelfInspection> {
   };
   Future<void> _submitImages() async {
     // Example data from the received data
-    Map<String, String> requestData = {
-      "datepicker_date": widget.data['datepicker_date'] ?? '2024-08-19',
-      "claim_number": widget.data[''] ?? 'IAIL APITest - 4',
-      "location": widget.data['registered_at'] ?? 'Mumbai',
-      "make": widget.data['maker_description'] ?? 'M & M',
-      "select_model": widget.data['select_model'] ?? 'MARAZZO 7STR M8 MAR',
-      "select_body_type": widget.data['body_type'] ?? 'Metallic',
-      "select_variant": widget.data['maker_model'] ?? 'Car',
-      "mfg_year": widget.data['manufacturing_date_formatted'] ?? '2024',
-      "select_city": widget.data['registered_at'] ?? 'Tire 1',
-      "paint_type": widget.data['color'] ?? 'Solid',
-      "reg_date": widget.data['registration_date'] ?? '2014-08-19',
-      "vehicle_number": widget.data['rc_number'] ?? 'MH02DD8596',
-      "compulsory_excess": widget.data['compulsory_excess'] ?? 'Some value',
-      "odometer": widget.data['odometer'] ?? '5000',
-      "incident_location": widget.data['incident_location'] ?? 'Mumbai, khar',
-    };
+    // Map<String, String> requestData = {
+    //   "datepicker_date": widget.data['datepicker_date'] ?? '2024-08-19',
+    //   "claim_number": widget.data[''] ?? 'IAIL APITest - 4',
+    //   "location": widget.data['registered_at'] ?? 'Mumbai',
+    //   "make": widget.data['maker_description'] ?? 'M & M',
+    //   "select_model": widget.data['select_model'] ?? 'MARAZZO 7STR M8 MAR',
+    //   "select_body_type": widget.data['body_type'] ?? 'Metallic',
+    //   "select_variant": widget.data['maker_model'] ?? 'Car',
+    //   "mfg_year": widget.data['manufacturing_date_formatted'] ?? '2024',
+    //   "select_city": widget.data['registered_at'] ?? 'Tire 1',
+    //   "paint_type": widget.data['color'] ?? 'Solid',
+    //   "reg_date": widget.data['registration_date'] ?? '2014-08-19',
+    //   "vehicle_number": widget.data['rc_number'] ?? 'MH02DD8596',
+    //   "compulsory_excess": widget.data['compulsory_excess'] ?? 'Some value',
+    //   "odometer": widget.data['odometer'] ?? '5000',
+    //   "incident_location": widget.data['incident_location'] ?? 'Mumbai, khar',
+    // };
 
     var uri = Uri.parse("http://164.52.202.251/fw_damage/create_fw_claim");
     var request = http.MultipartRequest('POST', uri);
 
     // Adding the fields to the request
-    requestData.forEach((key, value) {
-      request.fields[key] = value;
-    });
+    // requestData.forEach((key, value) {
+    //   request.fields[key] = value;
+    // });
 
     // Adding the images to the request
     for (var entry in staticImagePaths.entries) {
@@ -136,7 +141,7 @@ class _SelfInspectionState extends State<SelfInspection> {
         filename: basename(entry.value),
       );
       print('File path: ${entry.value}');
-      print('File path: ${requestData}');
+      // print('File path: ${requestData}');
       print('File path: ${file}');
 
       request.files.add(file);
@@ -184,50 +189,105 @@ class _SelfInspectionState extends State<SelfInspection> {
     }
   }
 
-  void updateSingleImage(int idx, String path, DateTime time, String location) {
-    setState(() {
-      switch (idx) {
-        case 0: frontSide = path; break;
-        case 1: frontRightHandSide = path; break;
-        case 2: driverSide = path; break;
-        case 3: rearRightHandSide = path; break;
-        case 4: rearSide = path; break;
-        case 5: rearLeftHandSide = path; break;
-        case 6: passengerSide = path; break;
-        case 7: frontLeftHandSide = path; break;
-        case 8: engineCompart = path; break;
-        case 9: chassisNo = path; break;
-        case 10: odometerCar = path; break;
-      }
-      timestamps[path] = time;
-      locations[path] = location;
-    });
+  Future<String> uploadImageToFirebase(String imagePath) async {
+    try {
+      final file = File(imagePath);
+
+      // Create a reference to the Firebase Storage location
+      final storageRef = FirebaseStorage.instance.ref().child(
+          'images/${basename(file.path)}');
+
+      // Upload the file
+      final uploadTask = storageRef.putFile(file);
+
+      // Wait for the upload to complete
+      final snapshot = await uploadTask;
+
+      // Get the download URL
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return '';
+    }
+  }
+  void updateCameraImages(List<Map<String, String>> imageData) async {
+    List<String> imageUrls = [];
+    for (var data in imageData) {
+      String imgPath = data["imgPath"] ?? "";
+      DateTime timestamp = DateTime.parse(data["timestamp"] ?? "");
+      String location = data["location"] ?? "";
+
+      String downloadUrl = await uploadImageToFirebase(imgPath);
+      print('Image uploaded to Firebase: $downloadUrl');
+      imageUrls.add(downloadUrl);
+
+      // Update local state with download URLs
+      if (frontSide.isEmpty) frontSide = downloadUrl;
+      else if (frontRightHandSide.isEmpty) frontRightHandSide = downloadUrl;
+      else if (driverSide.isEmpty) driverSide = downloadUrl;
+      else if (rearRightHandSide.isEmpty) rearRightHandSide = downloadUrl;
+      else if (rearSide.isEmpty) rearSide = downloadUrl;
+      else if (rearLeftHandSide.isEmpty) rearLeftHandSide = downloadUrl;
+      else if (passengerSide.isEmpty) passengerSide = downloadUrl;
+      else if (frontLeftHandSide.isEmpty) frontLeftHandSide = downloadUrl;
+      else if (engineCompart.isEmpty) engineCompart = downloadUrl;
+      else if (chassisNo.isEmpty) chassisNo = downloadUrl;
+      else if (odometerCar.isEmpty) odometerCar = downloadUrl;
+
+      timestamps[downloadUrl] = timestamp;
+      locations[downloadUrl] = location;
+    }
+
+    // Update the parent with the list of image URLs
+    widget.onImagesUpdated(imageUrls);
     disableSubmit();
   }
-  void updateCameraImages(List<Map<String, String>> imageData) {
-    setState(() {
-      for (var data in imageData) {
-        String imgPath = data["imgPath"] ?? "";
-        DateTime timestamp = DateTime.parse(data["timestamp"] ?? "");
-        String location = data["location"] ?? "";
-
-        if (frontSide.isEmpty) frontSide = imgPath;
-        else if (frontRightHandSide.isEmpty) frontRightHandSide = imgPath;
-        else if (driverSide.isEmpty) driverSide = imgPath;
-        else if (rearRightHandSide.isEmpty) rearRightHandSide = imgPath;
-        else if (rearSide.isEmpty) rearSide = imgPath;
-        else if (rearLeftHandSide.isEmpty) rearLeftHandSide = imgPath;
-        else if (passengerSide.isEmpty) passengerSide = imgPath;
-        else if (frontLeftHandSide.isEmpty) frontLeftHandSide = imgPath;
-        else if (engineCompart.isEmpty) engineCompart = imgPath;
-        else if (chassisNo.isEmpty) chassisNo = imgPath;
-        else if (odometerCar.isEmpty) odometerCar = imgPath;
-
-        timestamps[imgPath] = timestamp;
-        locations[imgPath] = location;
-      }
+  void printImagePaths() {
+    final imagePaths = getAllImagePaths();
+    print('final Map<String, String> dynamicImagePaths = {');
+    imagePaths.forEach((key, value) {
+      print("  '$key': '$value',");
     });
+    print('};');
+  }
+  Future<void> updateSingleImage(int idx, String path, DateTime time, String location) async {
+    String downloadUrl = await uploadImageToFirebase(path);
+    setState(() {
+      switch (idx) {
+        case 0: frontSide = downloadUrl; break;
+        case 1: frontRightHandSide = downloadUrl; break;
+        case 2: driverSide = downloadUrl; break;
+        case 3: rearRightHandSide = downloadUrl; break;
+        case 4: rearSide = downloadUrl; break;
+        case 5: rearLeftHandSide = downloadUrl; break;
+        case 6: passengerSide = downloadUrl; break;
+        case 7: frontLeftHandSide = downloadUrl; break;
+        case 8: engineCompart = downloadUrl; break;
+        case 9: chassisNo = downloadUrl; break;
+        case 10: odometerCar = downloadUrl; break;
+      }
+      widget.onImagesUpdated(getAllImagePaths().values.toList());
+      timestamps[downloadUrl] = time;
+      locations[downloadUrl] = location;
+    });
+    printImagePaths();
     disableSubmit();
+  }
+  Map<String, String> getAllImagePaths() {
+    return {
+      'frontSide': frontSide,
+      'frontRightHandSide': frontRightHandSide,
+      'driverSide': driverSide,
+      'rearRightHandSide': rearRightHandSide,
+      'rearSide': rearSide,
+      'rearLeftHandSide': rearLeftHandSide,
+      'passengerSide': passengerSide,
+      'frontLeftHandSide': frontLeftHandSide,
+      'engineCompart': engineCompart,
+      'chassisNo': chassisNo,
+      'odometerCar': odometerCar,
+    };
   }
 
   @override
@@ -255,14 +315,7 @@ class _SelfInspectionState extends State<SelfInspection> {
       child: Stack(
         children: [
           Scaffold(
-            appBar: AppBar(
-              backgroundColor: Colors.yellow,
-              title: Text(
-                "Self Inspection",
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-              ),
-              iconTheme: IconThemeData(color: Colors.black),
-            ),
+            backgroundColor: Colors.white,
             body: SingleChildScrollView(
               child: Column(
                 children: [
@@ -389,35 +442,27 @@ class _SelfInspectionState extends State<SelfInspection> {
                   elevation: MaterialStateProperty.all(0),
                 ),
                 onPressed: () {
-                  Navigator.of(context as BuildContext).push(
-                    MaterialPageRoute(
-                      builder: (context) => CameraImageUpload(
-                        updateImageData: (List<Map<String, String>> _) {},
-                        showTopBanner: true,
-                        appBarTitle: title,
-                        updateSingleImageData: updateSingleImage,
-                        singleImageIndex: index,
-                      ),
-                    ),
-                  );
+                  navigateToCameraImageUpload(isSingle: true, title: title, index: index);
                 },
                 child: Text("Retake", style: TextStyle(color: Colors.blue[900])),
               )
             ],
           ),
           if (imagePath.isNotEmpty) ...[
-            Image.file(File(imagePath)),
+            imagePath.startsWith('http')
+                ? Image.network(imagePath)
+                : Image.file(File(imagePath)),
             Text(
               "Timestamp: ${timestamps[imagePath]}",
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
               "Location: ${locations[imagePath]}",
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -426,9 +471,7 @@ class _SelfInspectionState extends State<SelfInspection> {
         ],
       ),
     );
-  }
-
-  void navigateToCameraImageUpload({required bool isSingle, required String title, required int index}) {
+  }  void navigateToCameraImageUpload({required bool isSingle, required String title, required int index}) {
     Navigator.of(context as BuildContext).push(
       MaterialPageRoute(
         builder: (context) => CameraImageUpload(

@@ -336,28 +336,6 @@ class ImageUploadService {
     request.headers['Authorization'] = 'JWT $token';
     request.fields['access_key'] = 'd452aee4-e372-456f-a30e-77e007fdcca5';
 
-    Future<http.MultipartFile> getMultipartFile(String field, dynamic image) async {
-      late Uint8List imageData;
-      String fileName;
-
-      if (image is File) {
-        imageData = await image.readAsBytes();
-        fileName = image.path.split('/').last;
-      } else if (image is Uint8List) {
-        imageData = image;
-        fileName = 'image.jpg'; // Default name for Uint8List
-      } else {
-        throw ArgumentError('Unsupported image type');
-      }
-
-      return http.MultipartFile.fromBytes(
-        field,
-        imageData,
-        filename: fileName,
-        contentType: MediaType('image', 'jpeg'),
-      );
-    }
-
     request.files.add(await getMultipartFile('rc_page_1', image));
 
     final dummyImagePath = await _saveDummyImage();
@@ -378,6 +356,29 @@ class ImageUploadService {
       print("Error during upload: $e");
       throw Exception('Failed to upload image: $e');
     }
+  }
+
+  // Helper method to create MultipartFile from File or Uint8List
+  Future<http.MultipartFile> getMultipartFile(String field, dynamic image) async {
+    late Uint8List imageData;
+    String fileName;
+
+    if (image is File) {
+      imageData = await image.readAsBytes();
+      fileName = image.path.split('/').last;
+    } else if (image is Uint8List) {
+      imageData = image;
+      fileName = 'image.jpg'; // Default name for Uint8List
+    } else {
+      throw ArgumentError('Unsupported image type');
+    }
+
+    return http.MultipartFile.fromBytes(
+      field,
+      imageData,
+      filename: fileName,
+      contentType: MediaType('image', 'jpeg'),
+    );
   }
 
   dynamic _parseResponse(String responseBody) {
@@ -422,6 +423,7 @@ class ImageUploadService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
+
         body: json.encode({
           'id_number': rcRegNumber,
         }),
@@ -438,6 +440,115 @@ class ImageUploadService {
       }
     } catch (e) {
       throw Exception('Error sending RC number: $e');
+    }
+  }
+
+  // DL Upload Methods
+  Future<dynamic> uploadDlImage(dynamic image) async {
+    if (kIsWeb) {
+      if (image is! Uint8List) {
+        throw ArgumentError('For web, image must be a Uint8List');
+      }
+      return _uploadDlImageWeb(image);
+    } else {
+      if (image is! File && image is! Uint8List) {
+        throw ArgumentError('For mobile, image must be either a File or Uint8List');
+      }
+      return _uploadDlImageMobile(image);
+    }
+  }
+
+  Future<dynamic> _uploadDlImageWeb(Uint8List imageData) async {
+    final token = await getAuthToken();
+    print('Token: $token');
+
+    final blob = html.Blob([imageData]);
+    final form = html.FormData();
+    form.appendBlob('dl_page_1', blob, 'dl_page_1.jpg');
+    
+    // Add dummy image for dl_page_2
+    final dummyBlob = await loadImageAsset('assets/dummy.jpg');
+    form.appendBlob('dl_page_2', dummyBlob, 'dl_page_2.jpg');
+    form.append('access_key', 'd452aee4-e372-456f-a30e-77e007fdcca5');
+
+    final request = html.HttpRequest();
+    request.open('POST', 'https://uat.iailclaimftr.com/api/V1/dl');
+    request.setRequestHeader('Authorization', 'JWT $token');
+
+    final completer = Completer<dynamic>();
+    request.onLoad.listen((event) {
+      if (request.status == 200) {
+        final response = json.decode(request.responseText!);
+        print('DL Upload Response: $response');
+        completer.complete(response);
+      } else {
+        completer.completeError('Failed to upload DL. Status: ${request.status}');
+      }
+    });
+
+    request.onError.listen((event) {
+      completer.completeError('Error uploading DL');
+    });
+
+    request.send(form);
+    return completer.future;
+  }
+
+  Future<dynamic> _uploadDlImageMobile(dynamic image) async {
+    final token = await getAuthToken();
+    print('Token: $token');
+
+    var uri = Uri.parse('https://uat.iailclaimftr.com/api/V1/dl');
+    var request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'JWT $token';
+    request.fields['access_key'] = 'd452aee4-e372-456f-a30e-77e007fdcca5';
+
+    // Add dl_page_1
+    request.files.add(await getMultipartFile('dl_page_1', image));
+
+    // Add dummy image for dl_page_2
+    final dummyImagePath = await _saveDummyImage();
+    request.files.add(await getMultipartFile('dl_page_2', File(dummyImagePath)));
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      var responseBody = await response.stream.bytesToString();
+      print('DL Upload Response: $responseBody');
+      return json.decode(responseBody);
+    } else {
+      throw Exception('Failed to upload DL. Status: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> sendDlNumber(String dlNumber, String dob) async {
+    print('Sending DL Number: $dlNumber, DOB: $dob');
+    // Using the universal RC endpoint for all document types
+    final Uri apiUrl = Uri.parse('https://kyc-api.aadhaarkyc.io/api/v1/rc/rc-full');
+    String token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTY1MTQ3MjA3OCwianRpIjoiN2Y1ZjAzNmEtNDBlMC00NDFlLWE4NzYtMWFjMGU5YWE2OTUyIiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmlhaWxAYWFkaGFhcmFwaS5pbyIsIm5iZiI6MTY1MTQ3MjA3OCwiZXhwIjoxOTY2ODMyMDc4LCJ1c2VyX2NsYWltcyI6eyJzY29wZXMiOlsicmVhZCJdfX0.Uv7arJdKKhug-6k60H4ovD1VxW1LuDLVcfX5iiKQQs4';
+
+    try {
+      final response = await http.post(
+        apiUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'id_number': dlNumber,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Successfully fetched DL details!');
+        Map<String, dynamic> jsonResponse = json.decode(response.body);
+        print(jsonResponse);
+        return jsonResponse;
+      } else {
+        print('Failed to fetch DL details. Status code: ${response.statusCode}');
+        throw Exception('Failed to fetch DL details. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching DL details: $e');
     }
   }
 

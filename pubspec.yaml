@@ -42,7 +42,7 @@ dependencies:
   camera: ^0.9.4+16
   permission_handler: ^10.4.1
   carousel_slider: ^4.1.1
-  geolocator: ^9.0.2
+  geolocator: ^10.1.0
   image: ^4.0.17
   html: ^0.15.4
   http_parser: ^4.0.2
@@ -57,6 +57,21 @@ dependencies:
   share_plus: ^10.0.2
   google_maps_flutter: ^2.9.0
   location: ^6.0.2
+  firebase_core: ^2.12.0
+  firebase_auth: ^4.16.0
+  firebase_analytics: ^10.6.0
+  cloud_firestore: 4.14.0
+  firebase_storage: ^11.6.0
+  geocoding: ^2.0.0
+  path: ^1.8.3
+  url_launcher: ^6.3.0
+  archive: ^3.4.10
+  flutter_image_compress: ^2.1.0  # Required for compression
+  google_mlkit_text_recognition: ^0.13.0  # For OCR
+  google_mlkit_image_labeling: ^0.12.0  # For document detection fallback
+  signature: ^5.4.0
+
+
 
 
 

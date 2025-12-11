@@ -22,7 +22,7 @@ final List<Map<String, List<dynamic>>> formSections = [
       'Engine Number',
       'Chassis Number',
       {'field': 'Date of Registration', 'type': 'date'},
-      {'field': 'Odometer Reading', 'type': 'number'},
+      // {'field': 'Odometer Reading', 'type': 'number'},
     ]
   },
   {
@@ -49,7 +49,7 @@ final List<Map<String, List<dynamic>>> formSections = [
     'Accident Details': [
       {'field': 'Date of Accident', 'type': 'date'},
       {'field': 'Time of Accident', 'type': 'time'},
-      'Exact Location of Accident',
+      {'field': 'Exact Location of Accident','type': 'location'}    ,
       {'field': 'Speed of Vehicle (Kmph)', 'type': 'number'},
       {'field': 'No. of Occupants / Pillion rider', 'type': 'number'},
       'Brief description of the accident',
