@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data'; // ✅ ADDED: Required for Uint8List
 import 'package:damagedetection1/helpers/APIConstants.dart';
 import 'package:damagedetection1/surveyor/ClaimPreviewScreen.dart';
 import 'package:flutter/material.dart';
@@ -203,8 +204,8 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                       ),
                       TextButton.icon(
                         onPressed: _showAddDocumentDialog,
-                        icon: Icon(Icons.add_circle_outline, size: 20),
-                        label: Text('Add Document'),
+                        icon: const Icon(Icons.add_circle_outline, size: 20),
+                        label: const Text('Add Document'),
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.blue.shade700,
                         ),
@@ -216,7 +217,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                   // Display added documents
                   if (_documentImages.isEmpty)
                     Container(
-                      padding: EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(12),
@@ -232,7 +233,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                             color: Colors.blue.shade700,
                             size: 24,
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               'No documents added yet. Tap "Add Document" to upload.',
@@ -248,7 +249,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                   else
                     ListView.builder(
                       shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
+                      physics: const NeverScrollableScrollPhysics(),
                       itemCount: _documentImages.length,
                       itemBuilder: (context, index) {
                         final docType = _documentImages.keys.elementAt(index);
@@ -428,8 +429,8 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           title: Row(
             children: [
               Icon(Icons.document_scanner, color: Colors.blue.shade700),
-              SizedBox(width: 12),
-              Text('Add Document'),
+              const SizedBox(width: 12),
+              const Text('Add Document'),
             ],
           ),
           content: Column(
@@ -439,16 +440,16 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                 'Select document type to upload',
                 style: TextStyle(color: Colors.grey[600]),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Container(
-                constraints: BoxConstraints(maxHeight: 400),
+                constraints: const BoxConstraints(maxHeight: 400),
                 child: SingleChildScrollView(
                   child: Column(
                     children: _documentTypes.map((docType) {
                       final isAdded = _documentImages.containsKey(docType);
                       return ListTile(
                         leading: Container(
-                          padding: EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isAdded
                                 ? Colors.green.shade50
@@ -486,7 +487,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Close'),
+              child: const Text('Close'),
             ),
           ],
         );
@@ -497,13 +498,13 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
   // Build document card widget
   Widget _buildDocumentCard(String docType, File? docImage) {
     return Card(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
             // Document Image Thumbnail
@@ -522,14 +523,14 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                   fit: BoxFit.cover,
                 ),
               )
-                  : Icon(
+                  : const Icon(
                 Icons.document_scanner,
                 color: Colors.grey,
                 size: 32,
               ),
             ),
 
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
 
             // Document Info
             Expanded(
@@ -544,7 +545,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                       color: Colors.grey[800],
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     docImage != null ? 'Image captured' : 'No image',
                     style: TextStyle(
@@ -566,7 +567,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                   tooltip: 'Capture/Replace',
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                   onPressed: () {
                     setState(() {
                       _documentImages.remove(docType);
@@ -930,20 +931,22 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
             _carImages[imageKey] = capturedFile;
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Image captured successfully'),
-                ],
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text('Image captured successfully'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
               ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
+            );
+          }
         }
       }
     } catch (e) {
@@ -1003,7 +1006,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          content: Column(
+          content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
@@ -1020,7 +1023,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                 'Please wait',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey[600],
+                  color: Colors.grey,
                 ),
               ),
             ],
@@ -1082,7 +1085,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       if (mounted) Navigator.pop(context);
 
       print('Validation exception: $e');
-      
+
       // Use fallback validation
       await _useFallbackValidation(docType, documentFile);
     }
@@ -1098,7 +1101,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          content: Column(
+          content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
@@ -1155,11 +1158,11 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
 
   /// Show confirmation dialog to user
   void _showConfirmationDialog(
-    String docType,
-    File documentFile,
-    String message,
-    double? confidence,
-  ) {
+      String docType,
+      File documentFile,
+      String message,
+      double? confidence,
+      ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1167,7 +1170,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
               SizedBox(width: 12),
@@ -1185,7 +1188,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
             children: [
               Text(message),
               if (confidence != null) ...[
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
                   'Confidence: ${(confidence * 100).toStringAsFixed(1)}%',
                   style: TextStyle(
@@ -1194,7 +1197,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                   ),
                 ),
               ],
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Do you still want to continue with this document?',
                 style: TextStyle(
@@ -1211,7 +1214,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
                 // Don't store the document
                 _showErrorSnackbar('Document not added');
               },
-              child: Text('Retake'),
+              child: const Text('Retake'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1225,7 +1228,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
               ),
-              child: Text('Continue Anyway'),
+              child: const Text('Continue Anyway'),
             ),
           ],
         );
@@ -1242,7 +1245,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.error_outline, color: Colors.red, size: 28),
               SizedBox(width: 12),
@@ -1253,7 +1256,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('OK'),
+              child: const Text('OK'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1263,7 +1266,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade700,
               ),
-              child: Text('Retake'),
+              child: const Text('Retake'),
             ),
           ],
         );
@@ -1277,14 +1280,14 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 12),
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -1295,14 +1298,14 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            SizedBox(width: 12),
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -1319,7 +1322,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       return;
     }
 
-    // ✅ Navigate to preview screen instead of directly submitting
+    // Navigate to preview screen instead of directly submitting
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1335,12 +1338,18 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       ),
     );
   }
-  Future<void> _handleActualSubmit() async {
+
+  // ✅ FIXED: Accept Uint8List signature parameter
+  Future<void> _handleActualSubmit(Uint8List signature) async {
     setState(() {
       _isSubmitting = true;
     });
 
     try {
+      // TODO: Store or upload the signature if needed
+      // Example: Save signature to file
+      // final signatureFile = await _saveSignatureToFile(signature);
+
       await _uploadToAPI();
       await _markTaskCompleted();
     } catch (e) {
@@ -1374,7 +1383,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
 
     int addedCount = 0;
 
-    // ✅ ADD FIR COPY IF EXISTS
+    // ADD FIR COPY IF EXISTS
     if (widget.driverDetails != null &&
         widget.driverDetails!['fir_copy_image_path'] != null) {
       final firFile = File(widget.driverDetails!['fir_copy_image_path']);
@@ -1382,6 +1391,18 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
         final fileName = 'FIR_COPY_${path.basename(firFile.path)}';
         print('Adding FIR copy to zip: $fileName');
         encoder.addFile(firFile, fileName);
+        addedCount++;
+      }
+    }
+
+    // ADD DL IMAGE IF EXISTS
+    if (widget.driverDetails != null &&
+        widget.driverDetails!['dl_image_path'] != null) {
+      final dlFile = File(widget.driverDetails!['dl_image_path']);
+      if (await dlFile.exists()) {
+        final fileName = 'DRIVING_LICENSE_${path.basename(dlFile.path)}';
+        print('Adding DL image to zip: $fileName');
+        encoder.addFile(dlFile, fileName);
         addedCount++;
       }
     }
@@ -1413,7 +1434,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
 
     print('Zip file created: $zipFilePath');
     print('Total images added: $addedCount');
-    print('Documents: ${_documentImages.length}, Vehicle images: ${_carImages.values.where((f) => f != null).length}, FIR: ${widget.driverDetails?['fir_copy_image_path'] != null ? 1 : 0}');
+    print('Documents: ${_documentImages.length}, Vehicle images: ${_carImages.values.where((f) => f != null).length}, FIR: ${widget.driverDetails?['fir_copy_image_path'] != null ? 1 : 0}, DL: ${widget.driverDetails?['dl_image_path'] != null ? 1 : 0}');
     print('Zip file size: ${File(zipFilePath).lengthSync()} bytes');
     print('=======================================');
 
@@ -1435,6 +1456,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
         Uri.parse(apiUrl),
         headers: {
           "Content-Type": "application/json",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTczNDQyMTM4MCwianRpIjoiMDJiZmNkNTItNDJhYS00NWNjLWI5ZTUtNjNkYTQ2YTY5ZWY0IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6eyJ1c2VyX2lkIjoiNmY3N2M4NjItMTc5OC00MTU4LWJiNDUtOGRjNThiOTMxNGRmIiwidXNlcl9uYW1lIjoiU2FxdWliIEFuc2FyaSIsInVzZXJfZW1haWwiOiJzYXF1aWIuYW5zYXJpQGlhaWwuaW4iLCJ1c2VyX3JvbGUiOiJzdXJ2ZXlvciIsInVzZXJfcGhvbmUiOiI5MzIxMDI0MDg0In0sIm5iZiI6MTczNDQyMTM4MCwiY3NyZiI6ImNjOWU1YzRlLWYyYjUtNGNmYS05OWJhLTNhNTRhMjIxNGIzZCIsImV4cCI6MTczNzAxMzM4MH0.yzKBUKGdxdcPWZzSdPmXbmTiMovement4sABmGLzlDkTGdY", // TODO: Replace with dynamic token
         },
         body: json.encode({
           'accident_id': widget.accidentId,
@@ -1463,13 +1485,144 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
     }
   }
 
+  Future<bool> _showPayloadPreviewDialog(Map<String, String> fields, List<String> files) async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.preview, color: Colors.blue.shade700),
+              SizedBox(width: 12),
+              Text('Review Payload'),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            constraints: BoxConstraints(maxHeight: 500),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Please review the data before submission:',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // Request Fields
+                  Text(
+                    'Request Fields:',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: fields.entries.map((entry) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '${entry.key}:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  entry.value.length > 100 
+                                      ? '${entry.value.substring(0, 100)}...' 
+                                      : entry.value,
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  // Files
+                  Text(
+                    'Files to Upload:',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: files.map((file) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.attach_file, size: 16, color: Colors.grey.shade600),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  file,
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+              ),
+              child: Text('Submit to API'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+
   Future<void> _uploadToAPI() async {
     const String apiUrl =
         'https://uat.goclaims.in/motor_claim_api/accident_intimation_motor';
 
     var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
 
-    // ✅ CHANGED: Send all driver details as single JSON object
+    // Send all driver details as single JSON object
     if (widget.driverDetails != null) {
       request.fields['surveyor_details'] = json.encode(widget.driverDetails);
       print('========== SURVEYOR DETAILS ==========');
@@ -1477,20 +1630,20 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       print('======================================');
     }
 
-    // Add all required fields (UNCHANGED)
-    request.fields['task_id'] = widget.taskId;
+    // Add all required fields
+    request.fields['task_id'] = widget.driverDetails?['task_id']?.toString() ?? widget.accidentId; // From task data
     request.fields['suv_id'] = _surveyorId!;
     request.fields['location'] = 'Mumbai';
     request.fields['status'] = 'Survey Completed';
-    request.fields['make'] = 'MAHINDRA & MAHINDRA';
-    request.fields['model'] = 'BOLERO';
+    request.fields['make'] = widget.driverDetails?['make']?.toString() ?? 'MAHINDRA & MAHINDRA'; // From task data
+    request.fields['model'] = widget.driverDetails?['model']?.toString() ?? 'BOLERO'; // From task data
     request.fields['body_type'] = 'four_wheeler';
     request.fields['variant'] = 'Car';
     request.fields['mfg_year'] = '2024';
     request.fields['city_category'] = 'Tier 1';
     request.fields['paint_type'] = 'Solid';
     request.fields['registration_date'] = 'Dummy';
-    request.fields['vehicle_number'] = 'MH08AN6050';
+    request.fields['vehicle_number'] = widget.driverDetails?['vehicle_number']?.toString() ?? widget.taskId; // From task data
     request.fields['compulsory_excess'] = 'Test';
     request.fields['odometer'] = '1234567';
     request.fields['incident_location'] = 'Mumbai';
@@ -1499,12 +1652,24 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
     request.fields['accident_reference_id'] = widget.accidentId;
     request.fields['claim_amount'] = '10000';
 
-    // Add remarks if available (UNCHANGED)
+    // Add remarks if available
     if (_remarksController.text.trim().isNotEmpty) {
       request.fields['remarks'] = _remarksController.text.trim();
     }
 
-    // Add document types as JSON array (UNCHANGED)
+    // Add garage_id if network garage selected
+    if (widget.driverDetails?['garage_id'] != null) {
+      request.fields['garage_id'] = widget.driverDetails!['garage_id'].toString();
+      print('Added garage_id: ${widget.driverDetails!['garage_id']}');
+    }
+
+    // Add non_network_garages if non-network garage selected
+    if (widget.driverDetails?['non_network_garages'] != null) {
+      request.fields['non_network_garages'] = json.encode(widget.driverDetails!['non_network_garages']);
+      print('Added non_network_garages: ${widget.driverDetails!['non_network_garages']}');
+    }
+
+    // Add document types as JSON array
     if (_documentImages.isNotEmpty) {
       request.fields['document_types'] =
           json.encode(_documentImages.keys.toList());
@@ -1516,7 +1681,6 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
     });
     print('====================================');
 
-    // REST OF YOUR CODE REMAINS THE SAME (image upload, response handling, etc.)
     final hasVehicleImages = _carImages.values.any((file) => file != null);
     final hasDocumentImages = _documentImages.isNotEmpty;
     final hasFIRCopy = widget.driverDetails != null &&
@@ -1544,6 +1708,21 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
     } else {
       print('No images to upload');
     }
+
+    // Show payload preview dialog
+    // TODO: Uncomment to enable payload preview before submission
+    /*
+    final filesList = <String>[];
+    if (hasAnyImages) {
+      filesList.add('images.zip (${_documentImages.length} documents, ${_carImages.values.where((f) => f != null).length} vehicle images)');
+    }
+    
+    final shouldProceed = await _showPayloadPreviewDialog(request.fields, filesList);
+    if (!shouldProceed) {
+      print('User cancelled submission');
+      return; // User cancelled
+    }
+    */
 
     try {
       print('Sending request...');
@@ -1582,7 +1761,7 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
             builder: (context) => ClaimSuccessPage(
               refId: responseData['ref_id'] ?? 'N/A',
               result: responseData['result'] ?? 'Processing started',
-              taskId: widget.taskId,
+              taskId: widget.driverDetails?['task_id']?.toString() ?? widget.accidentId, // Use actual task_id
             ),
           ),
         );
@@ -1594,372 +1773,4 @@ class _AccidentIntimationScreenState extends State<AccidentIntimationScreen> {
       rethrow;
     }
   }
-
-
-// Future<void> _uploadToAPI() async {
-  //   const String apiUrl =
-  //       'https://uat.goclaims.in/motor_claim_api/accident_intimation_motor';
-  //
-  //   var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-  //
-  //   // ✅ ADD NEW ACCIDENT SNAPSHOT FIELDS
-  //   if (widget.driverDetails != null) {
-  //     // Step 1: Accident Snapshot
-  //     request.fields['accident_datetime'] =
-  //         widget.driverDetails!['accident_datetime']?.toString() ?? '';
-  //     request.fields['accident_location'] =
-  //         widget.driverDetails!['accident_location']?.toString() ?? '';
-  //     request.fields['cause_of_accident'] =
-  //         widget.driverDetails!['cause_of_accident']?.toString() ?? '';
-  //     request.fields['vehicle_current_location'] =
-  //         widget.driverDetails!['vehicle_current_location']?.toString() ?? '';
-  //     request.fields['damage_brief_description'] =
-  //         widget.driverDetails!['damage_brief_description']?.toString() ?? '';
-  //
-  //     // Step 2: Driver Verification
-  //     request.fields['was_policyholder_driving'] =
-  //         widget.driverDetails!['was_policyholder_driving']?.toString() ?? '';
-  //     request.fields['driver_name'] =
-  //         widget.driverDetails!['driver_name']?.toString() ?? '';
-  //     request.fields['license_number'] =
-  //         widget.driverDetails!['license_number']?.toString() ?? '';
-  //     request.fields['license_expiry'] =
-  //         widget.driverDetails!['license_expiry']?.toString() ?? '';
-  //     request.fields['travelling_speed'] =
-  //         widget.driverDetails!['travelling_speed']?.toString() ?? '';
-  //
-  //     // Step 3: Police & Third Party
-  //     request.fields['police_informed'] =
-  //         widget.driverDetails!['police_informed']?.toString() ?? '';
-  //     request.fields['police_particulars_taken'] =
-  //         widget.driverDetails!['police_particulars_taken']?.toString() ?? '';
-  //     request.fields['fir_number'] =
-  //         widget.driverDetails!['fir_number']?.toString() ?? '';
-  //     request.fields['police_station'] =
-  //         widget.driverDetails!['police_station']?.toString() ?? '';
-  //     request.fields['third_party_involved'] =
-  //         widget.driverDetails!['third_party_involved']?.toString() ?? '';
-  //     request.fields['third_party_name'] =
-  //         widget.driverDetails!['third_party_name']?.toString() ?? '';
-  //
-  //     // Step 4: Other Details
-  //     request.fields['injury_or_death'] =
-  //         widget.driverDetails!['injury_or_death']?.toString() ?? '';
-  //     request.fields['independent_witnesses'] =
-  //         widget.driverDetails!['independent_witnesses']?.toString() ?? '';
-  //     request.fields['witness_name'] =
-  //         widget.driverDetails!['witness_name']?.toString() ?? '';
-  //     request.fields['witness_contact'] =
-  //         widget.driverDetails!['witness_contact']?.toString() ?? '';
-  //
-  //     // Send injury details as JSON array
-  //     if (widget.driverDetails!['injury_details'] != null &&
-  //         (widget.driverDetails!['injury_details'] as List).isNotEmpty) {
-  //       request.fields['injury_details'] =
-  //           json.encode(widget.driverDetails!['injury_details']);
-  //       print('Injury details count: ${(widget.driverDetails!['injury_details'] as List).length}');
-  //     }
-  //   }
-  //
-  //   // Add all required fields
-  //   request.fields['task_id'] = widget.taskId;
-  //   request.fields['suv_id'] = _surveyorId!;
-  //   request.fields['location'] = 'Mumbai';
-  //   request.fields['status'] = 'Survey Completed';
-  //   request.fields['make'] = 'MAHINDRA & MAHINDRA';
-  //   request.fields['model'] = 'BOLERO';
-  //   request.fields['body_type'] = 'four_wheeler';
-  //   request.fields['variant'] = 'Car';
-  //   request.fields['mfg_year'] = '2024';
-  //   request.fields['city_category'] = 'Tier 1';
-  //   request.fields['paint_type'] = 'Solid';
-  //   request.fields['registration_date'] = 'Dummy';
-  //   request.fields['vehicle_number'] = 'MH08AN6050';
-  //   request.fields['compulsory_excess'] = 'Test';
-  //   request.fields['odometer'] = '1234567';
-  //   request.fields['incident_location'] = 'Mumbai';
-  //   request.fields['intimation_date'] = '2024-11-11';
-  //   request.fields['customer_id'] = '6f77c862-1798-4158-bb99-8dc58b9314df';
-  //   request.fields['accident_reference_id'] = widget.accidentId;
-  //   request.fields['claim_amount'] = '10000';
-  //
-  //   // Add remarks if available
-  //   if (_remarksController.text.trim().isNotEmpty) {
-  //     request.fields['remarks'] = _remarksController.text.trim();
-  //   }
-  //
-  //   // Add document types as JSON array
-  //   if (_documentImages.isNotEmpty) {
-  //     request.fields['document_types'] =
-  //         json.encode(_documentImages.keys.toList());
-  //   }
-  //
-  //   print('========== REQUEST FIELDS ==========');
-  //   request.fields.forEach((key, value) {
-  //     print('$key: $value');
-  //   });
-  //   print('====================================');
-  //
-  //   // Check if there are any images to upload (including FIR copy)
-  //   final hasVehicleImages = _carImages.values.any((file) => file != null);
-  //   final hasDocumentImages = _documentImages.isNotEmpty;
-  //   final hasFIRCopy = widget.driverDetails != null &&
-  //       widget.driverDetails!['fir_copy_image_path'] != null;
-  //   final hasAnyImages = hasVehicleImages || hasDocumentImages || hasFIRCopy;
-  //
-  //   if (hasAnyImages) {
-  //     final zipFile = await _createZipFile();
-  //
-  //     final multipartFile = await http.MultipartFile.fromPath(
-  //       'zip_file',
-  //       zipFile.path,
-  //       filename: 'images.zip',
-  //     );
-  //     request.files.add(multipartFile);
-  //
-  //     print('========== ZIP FILE ADDED ==========');
-  //     print('Key: zip_file');
-  //     print('Filename: images.zip');
-  //     print('File size: ${zipFile.lengthSync()} bytes');
-  //     print('Document images included: ${_documentImages.length}');
-  //     print('Vehicle images included: ${_carImages.values.where((f) => f != null).length}');
-  //     print('FIR copy included: $hasFIRCopy');
-  //     print('====================================');
-  //   } else {
-  //     print('No images to upload');
-  //   }
-  //
-  //   try {
-  //     print('Sending request...');
-  //     var response = await request.send();
-  //
-  //     print('========== API RESPONSE ==========');
-  //     print('Status Code: ${response.statusCode}');
-  //     print('==================================');
-  //
-  //     if (response.statusCode != 200 && response.statusCode != 201) {
-  //       var responseBody = await response.stream.bytesToString();
-  //       print('Error Response Body: $responseBody');
-  //       throw Exception(
-  //           'Failed to upload: ${response.statusCode} - $responseBody');
-  //     }
-  //
-  //     var responseBody = await response.stream.bytesToString();
-  //     print('Success Response: $responseBody');
-  //
-  //     // Parse the response
-  //     final responseData = json.decode(responseBody);
-  //
-  //     // Clean up temporary zip files
-  //     if (hasAnyImages) {
-  //       final tempDir = await getTemporaryDirectory();
-  //       final zipFiles =
-  //       tempDir.listSync().where((file) => file.path.endsWith('.zip'));
-  //       for (var file in zipFiles) {
-  //         file.deleteSync();
-  //       }
-  //       print('Temporary zip files cleaned up');
-  //     }
-  //
-  //     // Navigate to success page
-  //     if (mounted && responseData['success'] == true) {
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(
-  //           builder: (context) => ClaimSuccessPage(
-  //             refId: responseData['ref_id'] ?? 'N/A',
-  //             result: responseData['result'] ?? 'Processing started',
-  //             taskId: widget.taskId,
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     print('========== UPLOAD ERROR ==========');
-  //     print('Error: $e');
-  //     print('==================================');
-  //     rethrow;
-  //   }
-  // }
-
-  // Future<void> _uploadToAPI() async {
-  //   const String apiUrl =
-  //       'https://uat.goclaims.in/motor_claim_api/accident_intimation_motor';
-  //
-  //   var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-  //
-  //   // Add driver details fields if available
-  //   if (widget.driverDetails != null) {
-  //     request.fields['driver_name'] =
-  //         widget.driverDetails!['driver_name'] ?? '';
-  //     request.fields['driver_dob'] = widget.driverDetails!['dob'] ?? '';
-  //     request.fields['driver_license'] =
-  //         widget.driverDetails!['license_number'] ?? '';
-  //     request.fields['license_expiry'] =
-  //         widget.driverDetails!['license_expiry'] ?? '';
-  //     request.fields['driver_relationship'] =
-  //         widget.driverDetails!['relationship'] ?? '';
-  //     request.fields['driver_contact'] =
-  //         widget.driverDetails!['contact'] ?? '';
-  //     request.fields['driver_email'] = widget.driverDetails!['email'] ?? '';
-  //     request.fields['driver_address'] =
-  //         widget.driverDetails!['address'] ?? '';
-  //     request.fields['is_driver_owner'] =
-  //         widget.driverDetails!['is_owner'].toString();
-  //
-  //     if (widget.driverDetails!['is_owner'] == false) {
-  //       request.fields['owner_name'] =
-  //           widget.driverDetails!['owner_name'] ?? '';
-  //       request.fields['owner_contact'] =
-  //           widget.driverDetails!['owner_contact'] ?? '';
-  //       request.fields['owner_email'] =
-  //           widget.driverDetails!['owner_email'] ?? '';
-  //       request.fields['owner_address'] =
-  //           widget.driverDetails!['owner_address'] ?? '';
-  //     }
-  //
-  //     // ✅ ADD ACCIDENT DETAILS HERE
-  //     request.fields['travelling_speed'] =
-  //         widget.driverDetails!['travelling_speed']?.toString() ?? '';
-  //     request.fields['road_condition'] =
-  //         widget.driverDetails!['road_condition']?.toString() ?? '';
-  //     request.fields['light_showing'] =
-  //         widget.driverDetails!['light_showing']?.toString() ?? '';
-  //     request.fields['constable_warning_issued'] =
-  //         widget.driverDetails!['constable_warning_issued']?.toString() ?? 'false';
-  //     request.fields['police_involved'] =
-  //         widget.driverDetails!['police_involved']?.toString() ?? 'false';
-  //     request.fields['death_or_injury_occurred'] =
-  //         widget.driverDetails!['death_or_injury_occurred']?.toString() ?? 'false';
-  //
-  //     // Send injury details as JSON array
-  //     if (widget.driverDetails!['injury_details'] != null &&
-  //         (widget.driverDetails!['injury_details'] as List).isNotEmpty) {
-  //       request.fields['injury_details'] =
-  //           json.encode(widget.driverDetails!['injury_details']);
-  //       print('Injury details count: ${(widget.driverDetails!['injury_details'] as List).length}');
-  //     }
-  //   }
-  //
-  //   // Add all required fields
-  //   request.fields['task_id'] = widget.taskId;
-  //   request.fields['suv_id'] = _surveyorId!;
-  //   request.fields['location'] = 'Mumbai';
-  //   request.fields['status'] = 'Survey Completed';
-  //   request.fields['make'] = 'MAHINDRA & MAHINDRA';
-  //   request.fields['model'] = 'BOLERO';
-  //   request.fields['body_type'] = 'four_wheeler';
-  //   request.fields['variant'] = 'Car';
-  //   request.fields['mfg_year'] = '2024';
-  //   request.fields['city_category'] = 'Tier 1';
-  //   request.fields['paint_type'] = 'Solid';
-  //   request.fields['registration_date'] = 'Dummy';
-  //   request.fields['vehicle_number'] = 'MH08AN6050';
-  //   request.fields['compulsory_excess'] = 'Test';
-  //   request.fields['odometer'] = '1234567';
-  //   request.fields['incident_location'] = 'Mumbai';
-  //   request.fields['intimation_date'] = '2024-11-11';
-  //   request.fields['customer_id'] = '6f77c862-1798-4158-bb99-8dc58b9314df';
-  //   request.fields['accident_reference_id'] = widget.accidentId;
-  //   request.fields['claim_amount'] = '10000';
-  //
-  //   // Add remarks if available
-  //   if (_remarksController.text.trim().isNotEmpty) {
-  //     request.fields['remarks'] = _remarksController.text.trim();
-  //   }
-  //
-  //   // Add document types as JSON array
-  //   if (_documentImages.isNotEmpty) {
-  //     request.fields['document_types'] =
-  //         json.encode(_documentImages.keys.toList());
-  //   }
-  //
-  //   print('========== REQUEST FIELDS ==========');
-  //   request.fields.forEach((key, value) {
-  //     print('$key: $value');
-  //   });
-  //   print('====================================');
-  //
-  //   // Check if there are any images to upload (including FIR copy)
-  //   final hasVehicleImages = _carImages.values.any((file) => file != null);
-  //   final hasDocumentImages = _documentImages.isNotEmpty;
-  //   final hasFIRCopy = widget.driverDetails != null &&
-  //       widget.driverDetails!['fir_copy_image_path'] != null;
-  //   final hasAnyImages = hasVehicleImages || hasDocumentImages || hasFIRCopy;
-  //
-  //   if (hasAnyImages) {
-  //     final zipFile = await _createZipFile();
-  //
-  //     final multipartFile = await http.MultipartFile.fromPath(
-  //       'zip_file',
-  //       zipFile.path,
-  //       filename: 'images.zip',
-  //     );
-  //     request.files.add(multipartFile);
-  //
-  //     print('========== ZIP FILE ADDED ==========');
-  //     print('Key: zip_file');
-  //     print('Filename: images.zip');
-  //     print('File size: ${zipFile.lengthSync()} bytes');
-  //     print('Document images included: ${_documentImages.length}');
-  //     print('Vehicle images included: ${_carImages.values.where((f) => f != null).length}');
-  //     print('FIR copy included: $hasFIRCopy');
-  //     print('====================================');
-  //   } else {
-  //     print('No images to upload');
-  //   }
-  //
-  //   try {
-  //     print('Sending request...');
-  //     var response = await request.send();
-  //
-  //     print('========== API RESPONSE ==========');
-  //     print('Status Code: ${response.statusCode}');
-  //     print('==================================');
-  //
-  //     if (response.statusCode != 200 && response.statusCode != 201) {
-  //       var responseBody = await response.stream.bytesToString();
-  //       print('Error Response Body: $responseBody');
-  //       throw Exception(
-  //           'Failed to upload: ${response.statusCode} - $responseBody');
-  //     }
-  //
-  //     var responseBody = await response.stream.bytesToString();
-  //     print('Success Response: $responseBody');
-  //
-  //     // Parse the response
-  //     final responseData = json.decode(responseBody);
-  //
-  //     // Clean up temporary zip files
-  //     if (hasAnyImages) {
-  //       final tempDir = await getTemporaryDirectory();
-  //       final zipFiles =
-  //       tempDir.listSync().where((file) => file.path.endsWith('.zip'));
-  //       for (var file in zipFiles) {
-  //         file.deleteSync();
-  //       }
-  //       print('Temporary zip files cleaned up');
-  //     }
-  //
-  //     // Navigate to success page
-  //     if (mounted && responseData['success'] == true) {
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(
-  //           builder: (context) => ClaimSuccessPage(
-  //             refId: responseData['ref_id'] ?? 'N/A',
-  //             result: responseData['result'] ?? 'Processing started',
-  //             taskId: widget.taskId,
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     print('========== UPLOAD ERROR ==========');
-  //     print('Error: $e');
-  //     print('==================================');
-  //     rethrow;
-  //   }
-  // }
-
 }

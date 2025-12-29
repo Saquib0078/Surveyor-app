@@ -7,22 +7,41 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../AccidentIntimationScreen .dart';
-import '../extractionapi.dart';
 import '../services/DocumentValidationService.dart';
+import '../services/DLExtractionService.dart';
+import '../helpers/APIConstants.dart';
+import 'GarageMapSelectionScreen.dart';
+import 'ClaimPreviewScreen.dart';
 
 class DriverDetailsScreen extends StatefulWidget {
   final String taskId;
   final String accidentId;
+  final Map<String, dynamic>? taskData; // Task data for auto-fill
+  final bool isEditMode;
+  final int? editStep; // Which step to edit (0-3)
+  final Map<String, dynamic>? existingDetails;
+  final Map<String, File?>? existingCarImages;
+  final Map<String, File?>? existingDocumentImages;
+  final String? existingRemarks;
 
   const DriverDetailsScreen({
     Key? key,
     required this.taskId,
     required this.accidentId,
+    this.taskData, // Optional task data
+    this.isEditMode = false,
+    this.editStep,
+    this.existingDetails,
+    this.existingCarImages,
+    this.existingDocumentImages,
+    this.existingRemarks,
   }) : super(key: key);
 
   @override
   State<DriverDetailsScreen> createState() => _DriverDetailsScreenState();
 }
+
+
 
 class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTickerProviderStateMixin {
   int _currentStep = 0;
@@ -32,7 +51,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
   // Step 1: Accident Snapshot
   final TextEditingController _accidentDateTimeController = TextEditingController();
   final TextEditingController _accidentLocationController = TextEditingController();
-  String? _causeOfAccident;
+  final TextEditingController _causeOfAccidentController = TextEditingController(); // Changed to controller for flexible input
   final TextEditingController _vehicleCurrentLocationController = TextEditingController();
   final TextEditingController _damageBriefController = TextEditingController();
 
@@ -94,6 +113,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
     'Fatal',
   ];
 
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +122,167 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
       duration: Duration(milliseconds: 400),
     );
     _animationController.forward();
+    
+    // Set current step if editing specific step
+    if (widget.isEditMode && widget.editStep != null) {
+      _currentStep = widget.editStep!;
+    }
+    
+    // Auto-fill from task data (for new claims)
+    if (widget.taskData != null && !widget.isEditMode) {
+      _autoFillFromTaskData();
+    }
+    
+    // Pre-fill data if in edit mode
+    if (widget.isEditMode && widget.existingDetails != null) {
+      _prefillExistingData();
+    }
+  }
+
+  void _autoFillFromTaskData() {
+    final task = widget.taskData!;
+    
+    print('========== AUTO-FILLING FROM TASK DATA ==========');
+    print('Task Data: $task');
+    
+    // Auto-fill accident location from task address
+    if (task['address'] != null) {
+      _accidentLocationController.text = task['address'].toString();
+      print('Auto-filled accident_location: ${task['address']}');
+    }
+    
+    // Auto-fill vehicle current location from landmark
+    if (task['landmark'] != null) {
+      _vehicleCurrentLocationController.text = task['landmark'].toString();
+      print('Auto-filled vehicle_current_location: ${task['landmark']}');
+    }
+    
+    // Auto-fill cause of accident from accident_details (supports both dropdown and custom input)
+    if (task['accident_details'] != null) {
+      final accidentDetail = task['accident_details'].toString();
+      _causeOfAccidentController.text = accidentDetail;
+      print('Auto-filled cause_of_accident: $accidentDetail');
+    }
+    
+    // Leave damage_brief_description empty for user to fill
+    // _damageBriefController.text remains empty
+    print('damage_brief_description: Left empty for user input');
+    
+    // Auto-fill report time as accident datetime
+    if (task['report_time'] != null) {
+      try {
+        final reportTimeStr = task['report_time'].toString();
+        DateTime reportTime;
+        
+        // Try parsing RFC 2822 format first (e.g., "Tue, 23 Dec 2025 10:54:00 GMT")
+        try {
+          reportTime = HttpDate.parse(reportTimeStr);
+        } catch (e) {
+          // Fallback to standard ISO format
+          reportTime = DateTime.parse(reportTimeStr);
+        }
+        
+        _accidentDateTimeController.text = DateFormat('yyyy-MM-dd HH:mm').format(reportTime);
+        print('Auto-filled accident_datetime: ${_accidentDateTimeController.text}');
+      } catch (e) {
+        print('Error parsing report_time: $e');
+        print('Report time value: ${task['report_time']}');
+      }
+    }
+    
+    print('=================================================');
+  }
+
+  void _prefillExistingData() {
+    final details = widget.existingDetails!;
+    
+    // Accident Snapshot
+    if (details['accident_datetime'] != null) {
+      _accidentDateTimeController.text = details['accident_datetime'];
+    }
+    if (details['accident_location'] != null) {
+      _accidentLocationController.text = details['accident_location'];
+    }
+    if (details['cause_of_accident'] != null) {
+      _causeOfAccidentController.text = details['cause_of_accident'];
+    }
+    if (details['vehicle_current_location'] != null) {
+      _vehicleCurrentLocationController.text = details['vehicle_current_location'];
+    }
+    if (details['damage_brief_description'] != null) {
+      _damageBriefController.text = details['damage_brief_description'];
+    }
+    
+    // Driver Verification
+    _wasPolicyHolderDriving = details['was_policyholder_driving'];
+    if (details['driver_name'] != null) {
+      _driverNameController.text = details['driver_name'];
+    }
+    if (details['license_number'] != null) {
+      _licenseNumberController.text = details['license_number'];
+    }
+    if (details['license_expiry'] != null) {
+      _licenseExpiryController.text = details['license_expiry'];
+    }
+    if (details['travelling_speed'] != null) {
+      _travellingSpeedController.text = details['travelling_speed'].toString();
+    }
+    
+    // Police & Third Party
+    _policeInformed = details['police_informed'];
+    _policeParticularsTaken = details['police_particulars_taken'];
+    if (details['fir_number'] != null) {
+      _firNumberController.text = details['fir_number'];
+    }
+    if (details['police_station'] != null) {
+      _policeStationController.text = details['police_station'];
+    }
+    _thirdPartyInvolved = details['third_party_involved'];
+    if (details['third_party_name'] != null) {
+      _thirdPartyNameController.text = details['third_party_name'];
+    }
+    
+    // Other Details
+    _injuryOrDeath = details['injury_or_death'];
+    if (details['injury_details'] != null) {
+      _injuryDetails.addAll(List<Map<String, dynamic>>.from(details['injury_details']));
+    }
+    _independentWitnesses = details['independent_witnesses'];
+    if (details['witness_name'] != null) {
+      _witnessNameController.text = details['witness_name'];
+    }
+    if (details['witness_contact'] != null) {
+      _witnessContactController.text = details['witness_contact'];
+    }
+    
+    // Garage Selection
+    if (details.containsKey('garage_id')) {
+      _garageType = 'network';
+      // Note: You may need to load garage details from API if needed
+    } else if (details.containsKey('non_network_garage')) {
+      _garageType = 'non-network';
+      final garage = details['non_network_garage'];
+      if (garage['name'] != null) {
+        _nonNetworkGarageNameController.text = garage['name'];
+      }
+      if (garage['address'] != null) {
+        _nonNetworkGarageAddressController.text = garage['address'];
+      }
+      if (garage['contact'] != null) {
+        _nonNetworkGarageContactController.text = garage['contact'];
+      }
+      if (garage['email'] != null) {
+        _nonNetworkGarageEmailController.text = garage['email'];
+      }
+    }
+    
+    // Images (if paths are stored)
+    if (details['dl_image_path'] != null) {
+      _dlImage = File(details['dl_image_path']);
+    }
+    if (details['fir_copy_image_path'] != null) {
+      _firCopyImage = File(details['fir_copy_image_path']);
+    }
   }
 
   @override
@@ -250,76 +431,189 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
   }
 
   Future<void> _extractDLDetails() async {
-    if (_dlImage == null) return;
+    if (_dlImage == null) {
+      print('❌ DL Image is null, cannot extract');
+      return;
+    }
 
     try {
-      // Step 1: Validate the DL document first
-      _showWarningSnackBar('Validating document...');
+    // Step 1: Validate the DL document first
+    print('📄 Step 1: Validating DL document...');
+    _showWarningSnackBar('Validating document...');
+    
+    bool isValid = false;
+    
+    // 1. Try API Validation
+    var validationResult = await DocumentValidationService.validateDocument(
+      _dlImage!,
+      'DRIVING_LICENSE',
+    );
+
+    print('✅ API Validation Result: $validationResult');
+
+    if (validationResult['validated'] == true) {
+      isValid = true;
+    } else {
+       // 2. If API fails, Try Local Validation
+       print('⚠️ API Validation not confident. Trying Local Validation...');
+       final localResult = await DocumentValidationService.validateDocumentLocally(
+         _dlImage!,
+         'DRIVING_LICENSE',
+       );
+       
+       print('✅ Local Validation Result: $localResult');
+       
+       if (localResult['validated'] == true) {
+         isValid = true;
+       }
+    }
+
+    if (!isValid) {
+      // 3. If both fail, Ask User
+      print('❌ All Validation Failed. Asking user...');
+      setState(() { _isValidating = false; }); // Hide loading temporarily
       
-      final validationResult = await DocumentValidationService.validateDocument(
-        _dlImage!,
-        'DRIVING_LICENSE',
+      bool? continueAnyway = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                 Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                 SizedBox(width: 12),
+                 Expanded(child: Text('Verification Failed', style: TextStyle(fontSize: 18))),
+              ],
+            ),
+            content: Text(
+              'We could not verify that this is a valid Driving License. The image might be unclear or validation failed.\n\nDo you want to retake the photo or continue anyway?',
+              style: TextStyle(fontSize: 14),
+            ),
+            actions: [
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).pop(false); // Retake
+                },
+                child: Text('Retake'),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop(true); // Continue
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text('Continue Anyway'),
+              ),
+            ],
+          );
+        },
       );
 
-      if (!validationResult['isValid']) {
+      if (continueAnyway != true) {
+           print('User chose to retake');
+           setState(() {
+             _dlImage = null;
+             _isValidating = false;
+           });
+           return; // Stop here
+      }
+      
+      print('User chose to continue despite validation failure');
+      setState(() { _isValidating = true; }); // Resume loading logic
+    }
+
+      // Step 2: Extract DL details using OCR
+      print('🔍 Step 2: Extracting DL details using OCR...');
+      _showWarningSnackBar('Extracting DL details...');
+      
+      final extractionResult = await DLExtractionService.extractDLDetails(_dlImage!);
+      print('📥 Extraction Result: $extractionResult');
+
+      if (!extractionResult['success']) {
+        print('❌ OCR extraction failed: ${extractionResult['error']}');
+        throw Exception('Failed to extract DL details: ${extractionResult['error']}');
+      }
+
+      final extractedData = extractionResult['data'] as Map<String, dynamic>;
+      print('📋 Extracted Data: $extractedData');
+
+      // Update UI with extracted data
+      bool anyDataExtracted = false;
+
+      // Set DL Number
+      if (extractedData.containsKey('dl_number') && extractedData['dl_number'] != null) {
+        String dlNumber = extractedData['dl_number'].toString();
+        print('✅ Setting DL Number: $dlNumber');
         setState(() {
-          _dlImage = null;
+          _licenseNumberController.text = dlNumber;
+        });
+        anyDataExtracted = true;
+      } else {
+        print('⚠️ DL Number not found in extracted data');
+      }
+
+      // Set Driver Name
+      if (extractedData.containsKey('name') && extractedData['name'] != null) {
+        String driverName = extractedData['name'].toString();
+        print('✅ Setting Driver Name: $driverName');
+        setState(() {
+          _driverNameController.text = driverName;
+        });
+        anyDataExtracted = true;
+      } else {
+        print('⚠️ Driver Name not found in extracted data');
+      }
+
+      // Set License Expiry
+      if (extractedData.containsKey('validity') && extractedData['validity'] != null) {
+        var validity = extractedData['validity'];
+        print('🔍 Validity data: $validity');
+        
+        if (validity is Map && validity.containsKey('non-transport') && validity['non-transport'] != null) {
+          var nonTransport = validity['non-transport'];
+          if (nonTransport is Map && nonTransport.containsKey('to') && nonTransport['to'] != null) {
+            String expiry = nonTransport['to'].toString();
+            print('✅ Setting Expiry Date: $expiry');
+            setState(() {
+              _licenseExpiryController.text = expiry;
+            });
+            anyDataExtracted = true;
+          } else {
+            print('⚠️ "to" field not found in non-transport validity');
+          }
+        } else {
+          print('⚠️ non-transport validity not found');
+        }
+      } else {
+        print('⚠️ Validity not found in extracted data');
+      }
+
+      if (anyDataExtracted) {
+        _showSuccessSnackBar('DL Details Extracted Successfully!');
+        print('✅ DL extraction completed successfully');
+      } else {
+        _showWarningSnackBar('Could not extract all details. Please verify and fill manually.');
+        print('⚠️ No data was extracted from DL');
+      }
+
+    } catch (e, stackTrace) {
+      print('❌ DL Extraction Error: $e');
+      print('❌ Stack Trace: $stackTrace');
+      _showWarningSnackBar('Failed to extract DL details: $e. Please enter manually.');
+    } finally {
+      // Ensure validation state is reset
+      if (mounted) {
+        setState(() {
           _isValidating = false;
         });
-        _showErrorSnackBar(
-          validationResult['message'] ?? 'Invalid DL. Please capture a clear image of the Driving License.',
-        );
-        return;
       }
-
-      // Step 2: Upload and extract DL details
-      final uploadResponse = await ImageUploadService().uploadDlImage(_dlImage!);
-      print('DL Upload Response: $uploadResponse');
-
-      String? dlNumber;
-      String? dob;
-
-      if (uploadResponse is Map<String, dynamic>) {
-        if (uploadResponse.containsKey('dl_number')) {
-          dlNumber = uploadResponse['dl_number'];
-        } else if (uploadResponse.containsKey('result') &&
-            uploadResponse['result'] is Map &&
-            uploadResponse['result']['output'] is Map) {
-          dlNumber = uploadResponse['result']['output']['dl_number'];
-          dob = uploadResponse['result']['output']['dob'];
-        }
-      }
-
-      if (dlNumber != null) {
-        setState(() {
-          _licenseNumberController.text = dlNumber!;
-        });
-
-        final detailsResponse = await ImageUploadService().sendDlNumber(dlNumber, dob ?? '');
-        
-        if (detailsResponse.containsKey('result') && detailsResponse['result'] is Map) {
-             var details = detailsResponse['result'];
-             if (details['name'] != null) {
-                 setState(() {
-                   _driverNameController.text = details['name'];
-                 });
-             }
-             if (details['validity'] != null && details['validity']['non-transport'] != null) {
-                 String expiry = details['validity']['non-transport']['to'];
-                 setState(() {
-                   _licenseExpiryController.text = expiry;
-                 });
-             }
-        }
-        
-        _showSuccessSnackBar('DL Details Extracted Successfully!');
-
-      } else {
-        throw Exception('Could not extract DL Number from image');
-      }
-    } catch (e) {
-      print('DL Extraction Error: $e');
-      _showWarningSnackBar('Failed to fetch DL details: $e. Please enter manually.');
     }
   }
 
@@ -378,7 +672,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
 
     try {
       final response = await http.post(
-        Uri.parse('https://uat.goclaims.in/motor_iail/garage/search'),
+        Uri.parse(APIConstants.garageSearch),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'query': query,
@@ -697,7 +991,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
     Map<String, dynamic> allDetails = {
       'accident_datetime': _accidentDateTimeController.text,
       'accident_location': _accidentLocationController.text.trim(),
-      'cause_of_accident': _causeOfAccident,
+      'cause_of_accident': _causeOfAccidentController.text.trim(),
       'vehicle_current_location': _vehicleCurrentLocationController.text.trim(),
       'damage_brief_description': _damageBriefController.text.trim(),
       'was_policyholder_driving': _wasPolicyHolderDriving,
@@ -712,6 +1006,7 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
       'third_party_involved': _thirdPartyInvolved,
       'third_party_name': _thirdPartyNameController.text.trim(),
       'fir_copy_image_path': _firCopyImage?.path,
+      'dl_image_path': _dlImage?.path,
       'injury_or_death': _injuryOrDeath,
       'injury_details': _injuryDetails,
       'independent_witnesses': _independentWitnesses,
@@ -719,16 +1014,83 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
       'witness_contact': _witnessContactController.text.trim(),
     };
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AccidentIntimationScreen(
-          taskId: widget.taskId,
-          accidentId: widget.accidentId,
-          driverDetails: allDetails,
+    // Add garage data based on selection type
+    print('========== GARAGE SELECTION DEBUG ==========');
+    print('Garage Type: $_garageType');
+    print('Selected Garage: $_selectedGarage');
+    print('Selected Garage ID: ${_selectedGarage?['id']}');
+    print('==========================================');
+    
+    if (_garageType == 'network' && _selectedGarage != null) {
+      // For network garage, send only the garage ID
+      allDetails['garage_id'] = _selectedGarage!['id'];
+      print('✅ Added network garage ID: ${_selectedGarage!['id']}');
+    } else if (_garageType == 'non-network') {
+      // For non-network garage, send the complete garage details as an object
+      allDetails['non_network_garages'] = {
+        'name': _nonNetworkGarageNameController.text.trim(),
+        'address': _nonNetworkGarageAddressController.text.trim(),
+        'phone': _nonNetworkGarageContactController.text.trim(),
+        'email': _nonNetworkGarageEmailController.text.trim(),
+      };
+      print('✅ Added non-network garage details');
+    } else {
+      print('⚠️ No garage selected or garage type not set');
+    }
+
+    // Add vehicle_number from task data if available
+    if (widget.taskData != null && widget.taskData!['vehicle_number'] != null) {
+      allDetails['vehicle_number'] = widget.taskData!['vehicle_number'];
+      print('Added vehicle_number from task: ${widget.taskData!['vehicle_number']}');
+    }
+
+    // Add task_id from task data if available
+    if (widget.taskData != null && widget.taskData!['task_id'] != null) {
+      allDetails['task_id'] = widget.taskData!['task_id'];
+      print('Added task_id from task: ${widget.taskData!['task_id']}');
+    }
+
+    // Add make and model from task data if available
+    if (widget.taskData != null && widget.taskData!['make'] != null) {
+      allDetails['make'] = widget.taskData!['make'];
+      print('Added make from task: ${widget.taskData!['make']}');
+    }
+    if (widget.taskData != null && widget.taskData!['model'] != null) {
+      allDetails['model'] = widget.taskData!['model'];
+      print('Added model from task: ${widget.taskData!['model']}');
+    }
+
+    // IF IN EDIT MODE, GO BACK TO PREVIEW
+    if (widget.isEditMode) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ClaimPreviewScreen(
+            taskId: widget.taskId,
+            accidentId: widget.accidentId,
+            driverDetails: allDetails,
+            carImages: widget.existingCarImages ?? {},
+            documentImages: widget.existingDocumentImages ?? {},
+            remarks: widget.existingRemarks ?? '',
+            onSubmit: (signature) {
+              // This will be handled by the preview screen
+            },
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      // NORMAL FLOW - GO TO ACCIDENT INTIMATION
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AccidentIntimationScreen(
+            taskId: widget.taskId,
+            accidentId: widget.accidentId,
+            driverDetails: allDetails,
+          ),
+        ),
+      );
+    }
   }
 
   void _onStepCancel() {
@@ -753,13 +1115,14 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _getStepTitle(),
+              widget.isEditMode ? 'Edit Details' : _getStepTitle(),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            Text(
-              'Step ${_currentStep + 1} of 4 (All Optional)',
-              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
-            ),
+            if (!widget.isEditMode)
+              Text(
+                'Step ${_currentStep + 1} of 4 (All Optional)',
+                style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
+              ),
           ],
         ),
         backgroundColor: Colors.blue.shade700,
@@ -776,29 +1139,32 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
             ),
             child: Column(
               children: [
-                _buildProgressIndicator(),
-                SizedBox(height: 16),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'All fields are optional. You can skip any step.',
-                          style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
+                // Hide progress indicator in edit mode
+                if (!widget.isEditMode) ...[
+                  _buildProgressIndicator(),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'All fields are optional. You can skip any step.',
+                            style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                SizedBox(height: 24),
+                  SizedBox(height: 24),
+                ],
                 _buildCurrentStepContent(),
                 SizedBox(height: 32),
                 _buildActionButtons(),
@@ -867,6 +1233,31 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
   }
 
   Widget _buildActionButtons() {
+    // IN EDIT MODE, SHOW ONLY SAVE BUTTON
+    if (widget.isEditMode) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _navigateToAccidentIntimation, // This will save and go back to preview
+          icon: Icon(Icons.save, size: 20),
+          label: Text(
+            'Save Changes',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green.shade600,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 3,
+          ),
+        ),
+      );
+    }
+
+    // NORMAL MODE - SHOW STEPPER BUTTONS
     final isLastStep = _currentStep == 3;
 
     return Column(
@@ -997,22 +1388,52 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
             // Why - Cause of Accident
             Text('What was the primary cause?', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
             SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _causeOfAccident,
-              decoration: InputDecoration(
-                labelText: 'Cause of Accident',
-                prefixIcon: Icon(Icons.info_outline, color: Colors.blue.shade700),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-              ),
-              items: _accidentCauses.map((cause) {
-                return DropdownMenuItem(value: cause, child: Text(cause));
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _causeOfAccident = value;
+            Autocomplete<String>(
+              initialValue: TextEditingValue(text: _causeOfAccidentController.text),
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.isEmpty) {
+                  return _accidentCauses;
+                }
+                return _accidentCauses.where((String option) {
+                  return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
                 });
+              },
+              onSelected: (String selection) {
+                setState(() {
+                  _causeOfAccidentController.text = selection;
+                });
+              },
+              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                // Sync with our main controller
+                controller.text = _causeOfAccidentController.text;
+                controller.addListener(() {
+                  if (_causeOfAccidentController.text != controller.text) {
+                    setState(() {
+                      _causeOfAccidentController.text = controller.text;
+                    });
+                  }
+                });
+                
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: 'Cause of Accident *',
+                    hintText: 'Select or type custom cause',
+                    prefixIcon: Icon(Icons.info_outline, color: Colors.blue.shade700),
+                    suffixIcon: Icon(Icons.arrow_drop_down),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter cause of accident';
+                    }
+                    return null;
+                  },
+                  onEditingComplete: onEditingComplete,
+                );
               },
             ),
             SizedBox(height: 20),
@@ -1549,101 +1970,162 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> with SingleTi
             SizedBox(height: 20),
             
             // Garage Type Selection with improved UI
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _garageType = 'network';
-                          _selectedGarage = null;
-                          _garageList = [];
-                          _garageSearchController.clear();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: _garageType == 'network' ? Colors.blue.shade700 : Colors.grey.shade100,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _garageType = 'network';
+                              _selectedGarage = null;
+                              _garageList = [];
+                              _garageSearchController.clear();
+                            });
+                          },
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: _garageType == 'network' ? Colors.blue.shade700 : Colors.grey.shade300,
-                            width: 2,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.business,
-                              color: _garageType == 'network' ? Colors.white : Colors.grey.shade600,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Network Garage',
-                                style: TextStyle(
-                                  color: _garageType == 'network' ? Colors.white : Colors.grey.shade600,
-                                  fontWeight: _garageType == 'network' ? FontWeight.bold : FontWeight.w500,
-                                  fontSize: 15,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: _garageType == 'network' ? Colors.blue.shade700 : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _garageType == 'network' ? Colors.blue.shade700 : Colors.grey.shade300,
+                                width: 2,
                               ),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.business,
+                                  color: _garageType == 'network' ? Colors.white : Colors.grey.shade600,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Network Garage',
+                                    style: TextStyle(
+                                      color: _garageType == 'network' ? Colors.white : Colors.grey.shade600,
+                                      fontWeight: _garageType == 'network' ? FontWeight.bold : FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _garageType = 'non-network';
-                          _selectedGarage = null;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: _garageType == 'non-network' ? Colors.orange.shade700 : Colors.grey.shade100,
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _garageType = 'non-network';
+                              _selectedGarage = null;
+                            });
+                          },
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: _garageType == 'non-network' ? Colors.orange.shade700 : Colors.grey.shade300,
-                            width: 2,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.store,
-                              color: _garageType == 'non-network' ? Colors.white : Colors.grey.shade600,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Non-Network',
-                                style: TextStyle(
-                                  color: _garageType == 'non-network' ? Colors.white : Colors.grey.shade600,
-                                  fontWeight: _garageType == 'non-network' ? FontWeight.bold : FontWeight.w500,
-                                  fontSize: 15,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: _garageType == 'non-network' ? Colors.orange.shade700 : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _garageType == 'non-network' ? Colors.orange.shade700 : Colors.grey.shade300,
+                                width: 2,
                               ),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.store,
+                                  color: _garageType == 'non-network' ? Colors.white : Colors.grey.shade600,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Non-Network',
+                                    style: TextStyle(
+                                      color: _garageType == 'non-network' ? Colors.white : Colors.grey.shade600,
+                                      fontWeight: _garageType == 'non-network' ? FontWeight.bold : FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                // Select on Map Button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GarageMapSelectionScreen(
+                            selectedGarageId: _selectedGarage?['id'],
+                            accidentLocation: _accidentLocationController.text, // Auto-search
+                          ),
+                        ),
+                      );
+                      
+                      if (result != null) {
+                        setState(() {
+                          _selectedGarage = result;
+                          _garageType = 'network'; // Treat map selection as network garage
+                        });
+                        _showSuccessSnackBar('Garage selected: ${result['garage_name']}');
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.green.shade700,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.map,
+                            color: Colors.green.shade700,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Select on Map',
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

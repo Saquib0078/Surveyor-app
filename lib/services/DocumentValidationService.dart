@@ -5,7 +5,7 @@ import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 
 class DocumentValidationService {
   static const String apiUrl = 'https://iassistlabs.com/kyc-vision/predict';
-  static const double confidenceThreshold = 0.85;
+  static const double confidenceThreshold = 0.70;
 
   /// Validate document using KYC Vision API
   /// Returns a map with validation result

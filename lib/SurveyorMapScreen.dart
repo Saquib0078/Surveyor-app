@@ -1018,7 +1018,7 @@ class _SurveyorMapScreenState extends State<SurveyorMapScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('${APIConstants.baseUrl}/fw_damage/accept_task'),
+        Uri.parse(APIConstants.acceptTask),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );
@@ -1143,7 +1143,7 @@ class _SurveyorMapScreenState extends State<SurveyorMapScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('${APIConstants.baseUrl}/fw_damage/reject_task'),
+        Uri.parse(APIConstants.rejectTask),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );

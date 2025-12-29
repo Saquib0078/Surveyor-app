@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:intl/intl.dart';
+import 'DriverDetailsScreen.dart';
 
 class ClaimPreviewScreen extends StatefulWidget {
   final String taskId;
@@ -9,7 +11,7 @@ class ClaimPreviewScreen extends StatefulWidget {
   final Map<String, dynamic> driverDetails;
   final Map<String, File?> carImages;
   final Map<String, File?> documentImages;  final String remarks;
-  final Function() onSubmit;
+  final Function(Uint8List signature) onSubmit;
 
   const ClaimPreviewScreen({
     Key? key,
@@ -112,8 +114,15 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
       // Get signature as image
       final signatureImage = await _signatureController.toPngBytes();
 
-      // Call the submit function from parent
-      widget.onSubmit();
+      if (signatureImage != null) {
+        // Call the submit function from parent with signature
+        widget.onSubmit(signatureImage);
+      } else {
+        setState(() {
+          _isSubmitting = false;
+        });
+        _showErrorSnackBar('Failed to capture signature. Please try again.');
+      }
     }
   }
 
@@ -131,6 +140,25 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  Future<void> _editDriverDetails(int step) async {
+    // Navigate back to DriverDetailsScreen in edit mode with specific step
+    final result = await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DriverDetailsScreen(
+          taskId: widget.taskId,
+          accidentId: widget.accidentId,
+          isEditMode: true,
+          editStep: step, // Jump to specific step
+          existingDetails: widget.driverDetails,
+          existingCarImages: widget.carImages,
+          existingDocumentImages: widget.documentImages,
+          existingRemarks: widget.remarks,
+        ),
       ),
     );
   }
@@ -211,6 +239,7 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
                         // _buildDetailRow('Vehicle Location', widget.driverDetails['vehicle_current_location'] ?? 'Not provided'),
                         // _buildDetailRow('Damage Description', widget.driverDetails['damage_brief_description'] ?? 'Not provided', maxLines: 3),
                       ],
+                      onEdit: () => _editDriverDetails(0), // Step 0: Accident Snapshot
                     ),
 
                   // Driver Verification
@@ -226,6 +255,7 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
                         _buildDetailRow('License Expiry', widget.driverDetails['license_expiry'] ?? 'Not provided'),
                         _buildDetailRow('Travelling Speed', widget.driverDetails['travelling_speed'] != null && widget.driverDetails['travelling_speed'].toString().isNotEmpty ? '${widget.driverDetails['travelling_speed']} km/h' : 'Not provided'),
                       ],
+                      onEdit: () => _editDriverDetails(1), // Step 1: Driver Verification
                     ),
 
                   // Police & Third Party
@@ -245,6 +275,7 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
                         if (widget.driverDetails['third_party_involved'] == true)
                           _buildDetailRow('Third Party Name', widget.driverDetails['third_party_name'] ?? 'Not provided'),
                       ],
+                      onEdit: () => _editDriverDetails(2), // Step 2: Police & Third Party
                     ),
 
                   // Other Details
@@ -263,6 +294,7 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
                           _buildDetailRow('Witness Contact', widget.driverDetails['witness_contact'] ?? 'Not provided'),
                         ],
                       ],
+                      onEdit: () => _editDriverDetails(3), // Step 3: Additional Information
                     ),
 
                   // Vehicle Images
@@ -414,7 +446,7 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
         widget.driverDetails['independent_witnesses'] != null;
   }
 
-  Widget _buildSection(String title, IconData icon, Color color, List<Widget> children) {
+  Widget _buildSection(String title, IconData icon, Color color, List<Widget> children, {VoidCallback? onEdit}) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -451,14 +483,24 @@ class _ClaimPreviewScreenState extends State<ClaimPreviewScreen> {
                   child: Icon(icon, color: Colors.white, size: 20),
                 ),
                 SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
                   ),
                 ),
+                if (onEdit != null)
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: Icon(Icons.edit, color: color),
+                    tooltip: 'Edit',
+                    padding: EdgeInsets.all(8),
+                    constraints: BoxConstraints(),
+                  ),
               ],
             ),
           ),

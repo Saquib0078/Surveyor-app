@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../SurveyorMapScreen.dart';
 import 'ProfileScreen.dart';
 import 'TasksListScreen.dart';
+import 'VerifyScreen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     SurveyorMapScreen(),
     TasksListScreen(),
+    VerifyScreen(),
     ProfileScreen(),
   ];
 
@@ -73,6 +75,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 icon: Icon(Icons.list_alt_outlined),
                 activeIcon: Icon(Icons.list_alt),
                 label: 'Tasks',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.verified_outlined),
+                activeIcon: Icon(Icons.verified),
+                label: 'Verify',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),

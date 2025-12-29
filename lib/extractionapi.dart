@@ -460,33 +460,42 @@ class ImageUploadService {
 
   Future<dynamic> _uploadDlImageWeb(Uint8List imageData) async {
     final token = await getAuthToken();
-    print('Token: $token');
+    print('🔑 [WEB] DL Upload - Token obtained: ${token?.substring(0, 20)}...');
 
     final blob = html.Blob([imageData]);
     final form = html.FormData();
     form.appendBlob('dl_page_1', blob, 'dl_page_1.jpg');
+    print('📤 [WEB] DL Upload - Added dl_page_1 to form');
     
     // Add dummy image for dl_page_2
     final dummyBlob = await loadImageAsset('assets/dummy.jpg');
     form.appendBlob('dl_page_2', dummyBlob, 'dl_page_2.jpg');
     form.append('access_key', 'd452aee4-e372-456f-a30e-77e007fdcca5');
+    print('📤 [WEB] DL Upload - Added dl_page_2 and access_key to form');
 
     final request = html.HttpRequest();
     request.open('POST', 'https://uat.iailclaimftr.com/api/V1/dl');
     request.setRequestHeader('Authorization', 'JWT $token');
+    print('📤 [WEB] DL Upload - Sending request to API...');
 
     final completer = Completer<dynamic>();
     request.onLoad.listen((event) {
+      print('📥 [WEB] DL Upload - Response received, status: ${request.status}');
       if (request.status == 200) {
+        print('📥 [WEB] DL Upload - Raw response text: ${request.responseText}');
         final response = json.decode(request.responseText!);
-        print('DL Upload Response: $response');
+        print('📥 [WEB] DL Upload - Parsed response type: ${response.runtimeType}');
+        print('📥 [WEB] DL Upload - Parsed response: $response');
         completer.complete(response);
       } else {
+        print('❌ [WEB] DL Upload - Failed with status: ${request.status}');
+        print('❌ [WEB] DL Upload - Response: ${request.responseText}');
         completer.completeError('Failed to upload DL. Status: ${request.status}');
       }
     });
 
     request.onError.listen((event) {
+      print('❌ [WEB] DL Upload - Error occurred: $event');
       completer.completeError('Error uploading DL');
     });
 
@@ -496,37 +505,50 @@ class ImageUploadService {
 
   Future<dynamic> _uploadDlImageMobile(dynamic image) async {
     final token = await getAuthToken();
-    print('Token: $token');
+    print('🔑 [MOBILE] DL Upload - Token obtained: ${token?.substring(0, 20)}...');
 
     var uri = Uri.parse('https://uat.iailclaimftr.com/api/V1/dl');
     var request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'JWT $token';
     request.fields['access_key'] = 'd452aee4-e372-456f-a30e-77e007fdcca5';
+    print('📤 [MOBILE] DL Upload - Request configured with access_key');
 
     // Add dl_page_1
     request.files.add(await getMultipartFile('dl_page_1', image));
+    print('📤 [MOBILE] DL Upload - Added dl_page_1 to request');
 
     // Add dummy image for dl_page_2
     final dummyImagePath = await _saveDummyImage();
     request.files.add(await getMultipartFile('dl_page_2', File(dummyImagePath)));
+    print('📤 [MOBILE] DL Upload - Added dl_page_2 to request');
+    print('📤 [MOBILE] DL Upload - Sending request to API...');
 
     var response = await request.send();
+    print('📥 [MOBILE] DL Upload - Response received, status: ${response.statusCode}');
+    
     if (response.statusCode == 200) {
       var responseBody = await response.stream.bytesToString();
-      print('DL Upload Response: $responseBody');
-      return json.decode(responseBody);
+      print('📥 [MOBILE] DL Upload - Raw response body: $responseBody');
+      final parsedResponse = json.decode(responseBody);
+      print('📥 [MOBILE] DL Upload - Parsed response type: ${parsedResponse.runtimeType}');
+      print('📥 [MOBILE] DL Upload - Parsed response: $parsedResponse');
+      return parsedResponse;
     } else {
+      var errorBody = await response.stream.bytesToString();
+      print('❌ [MOBILE] DL Upload - Failed with status: ${response.statusCode}');
+      print('❌ [MOBILE] DL Upload - Error body: $errorBody');
       throw Exception('Failed to upload DL. Status: ${response.statusCode}');
     }
   }
 
   Future<Map<String, dynamic>> sendDlNumber(String dlNumber, String dob) async {
-    print('Sending DL Number: $dlNumber, DOB: $dob');
+    print('📤 Sending DL Number to KYC API: $dlNumber, DOB: $dob');
     // Using the universal RC endpoint for all document types
     final Uri apiUrl = Uri.parse('https://kyc-api.aadhaarkyc.io/api/v1/rc/rc-full');
     String token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTY1MTQ3MjA3OCwianRpIjoiN2Y1ZjAzNmEtNDBlMC00NDFlLWE4NzYtMWFjMGU5YWE2OTUyIiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmlhaWxAYWFkaGFhcmFwaS5pbyIsIm5iZiI6MTY1MTQ3MjA3OCwiZXhwIjoxOTY2ODMyMDc4LCJ1c2VyX2NsYWltcyI6eyJzY29wZXMiOlsicmVhZCJdfX0.Uv7arJdKKhug-6k60H4ovD1VxW1LuDLVcfX5iiKQQs4';
 
     try {
+      print('📤 Making POST request to KYC API...');
       final response = await http.post(
         apiUrl,
         headers: {
@@ -538,16 +560,23 @@ class ImageUploadService {
         }),
       );
 
+      print('📥 KYC API Response - Status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
-        print('Successfully fetched DL details!');
+        print('✅ Successfully fetched DL details from KYC API!');
+        print('📥 Raw response body: ${response.body}');
         Map<String, dynamic> jsonResponse = json.decode(response.body);
-        print(jsonResponse);
+        print('📥 Parsed JSON response type: ${jsonResponse.runtimeType}');
+        print('📥 Parsed JSON response: $jsonResponse');
         return jsonResponse;
       } else {
-        print('Failed to fetch DL details. Status code: ${response.statusCode}');
+        print('❌ Failed to fetch DL details. Status code: ${response.statusCode}');
+        print('❌ Response body: ${response.body}');
         throw Exception('Failed to fetch DL details. Status code: ${response.statusCode}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error fetching DL details: $e');
+      print('❌ Stack trace: $stackTrace');
       throw Exception('Error fetching DL details: $e');
     }
   }
